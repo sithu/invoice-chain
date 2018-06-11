@@ -1,4 +1,4 @@
-package gochain
+package qbchain
 
 import (
     "bytes"
