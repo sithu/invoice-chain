@@ -48,15 +48,10 @@ type Block struct {
     PreviousHash string        `json:"previous_hash"`
 }
 
-type Transaction struct {
-    Sender    string `json:"sender"`
-    Recipient string `json:"recipient"`
-    Amount    int64  `json:"amount"`
-}
-
 type Blockchain struct {
     chain        []Block
     transactions []Transaction
+    balance      int64
     nodes        StringSet
 }
 
@@ -77,6 +72,11 @@ func (bc *Blockchain) NewBlock(proof int64, previousHash string) Block {
 
     bc.transactions = nil
     bc.chain = append(bc.chain, newBlock)
+    // Sum all txns balance
+    for _, tx := range newBlock.Transactions {
+        bc.balance += tx.Header.Amount
+    }
+
     return newBlock
 }
 
@@ -163,6 +163,7 @@ func NewBlockchain() *Blockchain {
     newBlockchain := &Blockchain{
         chain:        make([]Block, 0),
         transactions: make([]Transaction, 0),
+        balance:      0,
         nodes:        NewStringSet(),
     }
     // Initial, sentinel block
@@ -188,6 +189,7 @@ func computeHashForBlock(block Block) string {
 type blockchainInfo struct {
     Length int     `json:"length"`
     Chain  []Block `json:"chain"`
+    Balance int    `json:"balance"`
 }
 
 func findExternalChain(address string) (blockchainInfo, error) {

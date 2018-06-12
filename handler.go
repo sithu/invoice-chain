@@ -59,11 +59,24 @@ func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
 
 	var tx Transaction
 	err := json.NewDecoder(r.Body).Decode(&tx)
-	index := h.blockchain.NewTransaction(tx)
 
-	resp := map[string]string{
-		"message": fmt.Sprintf("Transaction will be added to Block %d", index),
-	}
+	// Adding the tx to blockchain directly with ProofOfWork
+	// We run the proof of work algorithm to get the next proof...
+	lastBlock := h.blockchain.LastBlock()
+	lastProof := lastBlock.Proof
+	proof := h.blockchain.ProofOfWork(lastProof)
+
+	newTx := NewTransaction(tx.Header.From, tx.Header.To, tx.Header.Amount, tx.Payload)
+	h.blockchain.NewTransaction(newTx)
+
+	// resp := map[string]string{
+	// 	"message": fmt.Sprintf("Transaction will be added to Block %d", index),
+	// }
+	
+	// Forge the new Block by adding it to the chain
+	block := h.blockchain.NewBlock(proof, "")
+
+	resp := map[string]interface{}{"message": "New Block Forged", "block": block}
 
 	status := http.StatusCreated
 	if err != nil {
@@ -93,7 +106,7 @@ func (h *handler) Mine(w io.Writer, r *http.Request) response {
 
 	// We must receive a reward for finding the proof.
 	// The sender is "0" to signify that this node has mined a new coin.
-	newTX := Transaction{Sender: "0", Recipient: h.nodeId, Amount: 1}
+	newTX := Transaction{Header: TransactionHeader{From: "0", To: h.nodeId, Amount: 1}}
 	h.blockchain.NewTransaction(newTX)
 
 	// Forge the new Block by adding it to the chain
@@ -113,7 +126,7 @@ func (h *handler) Blockchain(w io.Writer, r *http.Request) response {
 	}
 	log.Println("Blockchain requested")
 
-	resp := map[string]interface{}{"chain": h.blockchain.chain, "length": len(h.blockchain.chain)}
+	resp := map[string]interface{}{"chain": h.blockchain.chain, "length": len(h.blockchain.chain), "balance": h.blockchain.balance}
 	return response{resp, http.StatusOK, nil}
 }
 
