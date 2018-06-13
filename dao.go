@@ -2,6 +2,7 @@ package qbchain
 
 import (
 	"errors"
+	"time"
 
 	badgerdb "github.com/dgraph-io/badger"
 )
@@ -29,6 +30,9 @@ func New(data, meta string) (*DB, error) {
 	db := &DB{
 		badger: badgerDB,
 	}
+
+	go db.runGC()
+
 	return db, nil
 }
 
@@ -80,4 +84,17 @@ func (db *DB) Close() error {
 		return err
 	}
 	return nil
+}
+
+// runGC triggers the garbage collection for the Badger backend db.
+func (db *DB) runGC() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+	again:
+		err := db.badger.RunValueLogGC(0.7)
+		if err == nil {
+			goto again
+		}
+	}
 }

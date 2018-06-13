@@ -3,6 +3,7 @@ package qbchain
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"testing"
 
@@ -16,7 +17,7 @@ var (
 )
 
 func makeTestDB(t *testing.T) (*DB, func()) {
-	tmpDir, _ := ioutil.TempDir("/Users/jduan1/badger", "qbchain-test")
+	tmpDir, _ := ioutil.TempDir("/Users/jduan1/qbchain/", "qbchain-test")
 
 	fmt.Print(tmpDir)
 
@@ -24,12 +25,12 @@ func makeTestDB(t *testing.T) (*DB, func()) {
 
 	cleanup := func() {
 		db.Close()
-		//os.RemoveAll(tmpDir)
+		os.RemoveAll(tmpDir)
 	}
 	return db, cleanup
 }
 
-func TestDaoSet(t *testing.T) {
+func TestDaoSetAndGet(t *testing.T) {
 	require := require.New(t)
 	db, cleanup := makeTestDB(t)
 	defer cleanup()
