@@ -7,7 +7,7 @@ import (
     "fmt"
     "net/http"
     "net/url"
-    "time"
+    // "time"
     "log"
 )
 
@@ -23,13 +23,13 @@ type BlockchainService interface {
     ResolveConflicts() bool
 
     // Create a new Block in the Blockchain
-    NewBlock(proof int64, previousHash string) Block
+    AddBlock(b Block)
 
     // Creates a new transaction to go into the next mined Block
     NewTransaction(tx Transaction) int64
 
     // Returns the last block on the chain
-    LastBlock() Block
+    LastBlock() *Block
 
     // Simple Proof of Work Algorithm:
     // - Find a number p' such that hash(pp') contains leading 4 zeroes, where p is the previous p'
@@ -40,53 +40,29 @@ type BlockchainService interface {
     VerifyProof(lastProof, proof int64) bool
 }
 
-type Block struct {
-    Index        int64         `json:"index"`
-    Timestamp    int64         `json:"timestamp"`
-    Transactions []Transaction `json:"transactions"`
-    Proof        int64         `json:"proof"`
-    PreviousHash string        `json:"previous_hash"`
-}
 
 type Blockchain struct {
-    chain        []Block
-    transactions []Transaction
+    chain        BlockSlice
     balance      int64
     nodes        StringSet
 }
 
-func (bc *Blockchain) NewBlock(proof int64, previousHash string) Block {
-    prevHash := previousHash
-    if previousHash == "" {
-        prevBlock := bc.chain[len(bc.chain)-1]
-        prevHash = computeHashForBlock(prevBlock)
-    }
+func (bc *Blockchain) AddBlock(b Block) {
 
-    newBlock := Block{
-        Index:        int64(len(bc.chain) + 1),
-        Timestamp:    time.Now().UnixNano(),
-        Transactions: bc.transactions,
-        Proof:        proof,
-        PreviousHash: prevHash,
-    }
-
-    bc.transactions = nil
-    bc.chain = append(bc.chain, newBlock)
+    bc.chain = append(bc.chain, b)
     // Sum all txns balance
-    for _, tx := range newBlock.Transactions {
+    for _, tx := range *b.TransactionSlice {
         bc.balance += tx.Header.Amount
     }
-
-    return newBlock
 }
 
 func (bc *Blockchain) NewTransaction(tx Transaction) int64 {
-    bc.transactions = append(bc.transactions, tx)
-    return bc.LastBlock().Index + 1
+    // bc.transactions = append(bc.transactions, tx)
+    return 1;
 }
 
-func (bc *Blockchain) LastBlock() Block {
-    return bc.chain[len(bc.chain)-1]
+func (bc *Blockchain) LastBlock() *Block {
+    return bc.chain.LastBlock()
 }
 
 func (bc *Blockchain) ProofOfWork(lastProof int64) int64 {
@@ -103,21 +79,12 @@ func (bc *Blockchain) ValidProof(lastProof, proof int64) bool {
     return guessHash[:4] == "0000"
 }
 
-func (bc *Blockchain) ValidChain(chain *[]Block) bool {
-    lastBlock := (*chain)[0]
-    currentIndex := 1
-    for currentIndex < len(*chain) {
-        block := (*chain)[currentIndex]
+func (bc *Blockchain) ValidChain(chain *BlockSlice) bool {
+    for _, block := range *chain {
         // Check that the hash of the block is correct
-        if block.PreviousHash != computeHashForBlock(lastBlock) {
+        if !block.VerifyBlock(BLOCK_POW) {
             return false
         }
-        // Check that the Proof of Work is correct
-        if !bc.ValidProof(lastBlock.Proof, block.Proof) {
-            return false
-        }
-        lastBlock = block
-        currentIndex += 1
     }
     return true
 }
@@ -132,7 +99,7 @@ func (bc *Blockchain) RegisterNode(address string) bool {
 
 func (bc *Blockchain) ResolveConflicts() bool {
     neighbours := bc.nodes
-    newChain := make([]Block, 0)
+    newChain := new(BlockSlice)
 
     // We're only looking for chains longer than ours
     maxLength := len(bc.chain)
@@ -147,12 +114,12 @@ func (bc *Blockchain) ResolveConflicts() bool {
         // Check if the length is longer and the chain is valid
         if otherBlockchain.Length > maxLength && bc.ValidChain(&otherBlockchain.Chain) {
             maxLength = otherBlockchain.Length
-            newChain = otherBlockchain.Chain
+            newChain = &otherBlockchain.Chain
         }
     }
     // Replace our chain if we discovered a new, valid chain longer than ours
-    if len(newChain) > 0 {
-        bc.chain = newChain
+    if len(*newChain) > 0 {
+        bc.chain = *newChain
         return true
     }
 
@@ -161,13 +128,12 @@ func (bc *Blockchain) ResolveConflicts() bool {
 
 func NewBlockchain() *Blockchain {
     newBlockchain := &Blockchain{
-        chain:        make([]Block, 0),
-        transactions: make([]Transaction, 0),
+        chain:        nil,
         balance:      0,
         nodes:        NewStringSet(),
     }
     // Initial, sentinel block
-    newBlockchain.NewBlock(100, "1")
+    newBlockchain.AddBlock(NewBlock(make([]byte, 0))) // empty previous block
     return newBlockchain
 }
 
@@ -186,9 +152,10 @@ func computeHashForBlock(block Block) string {
     return ComputeHashSha256(buf.Bytes())
 }
 
+
 type blockchainInfo struct {
     Length int     `json:"length"`
-    Chain  []Block `json:"chain"`
+    Chain  BlockSlice `json:"chain"`
     Balance int    `json:"balance"`
 }
 
