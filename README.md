@@ -2,13 +2,35 @@
 
 ### Build
 
+#### QB Chain Server
+
 ```sh
 $ cd cmd
+$ go get github.com/dgraph-io/badger
 $ go get github.intuit.com/payments/qbchain.git
 $ go build -o qbchain
 ```
 
+#### Build CLI tool
+
+```sh
+$ cd cli
+$ go build -o qb
+```
+
 # Usage
+
+## Generate Key Pair
+
+```sh
+./qb genkeys
+```
+
+## Submit a New Transaction
+
+```sh
+./qb submit
+```
 
 ## Starting a node
 
