@@ -78,6 +78,10 @@ func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
 			prevBlock := h.blockchain.LastBlock()
 			block := NewBlock(prevBlock.Hash())
 			block.AddTransaction(&t)
+			// Hack here, in fact miner should sign the block and add it to chain
+			block.BlockHeader.Nonce = t.Header.Nonce
+			block.Signature = t.Signature
+			block.BlockHeader.Timestamp = t.Header.Timestamp
 
 			// Forge the new Block by adding it to the chain
 			h.blockchain.AddBlock(block)
@@ -116,6 +120,10 @@ func (h *handler) Mine(w io.Writer, r *http.Request) response {
 	prevBlock := h.blockchain.LastBlock()
 	block := NewBlock(prevBlock.Hash())
 	block.AddTransaction(&newTx)
+
+	block.BlockHeader.Nonce = newTx.Header.Nonce
+	block.Signature = newTx.Signature
+	block.BlockHeader.Timestamp = newTx.Header.Timestamp
 
 	// Forge the new Block by adding it to the chain
 	h.blockchain.AddBlock(block)

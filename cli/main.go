@@ -150,12 +150,18 @@ func CreateNewTransactionFromCli() Transaction {
 		fmt.Printf("Error: %s", err)
 	}
 
+	fmt.Print("Company ID: ")
+	cid, _ := reader.ReadString('\n')
+
+	fmt.Print("Transaction ID: ")
+	tid, _ := reader.ReadString('\n')
+
 	fmt.Print("Payload : ")
 	payload, _ := reader.ReadString('\n')
 	payload = strings.TrimSpace(payload)
 
 	kp := Keypair{Public: []byte(publicKey), Private: []byte(privateKey)}
-	txn := NewTransaction(kp.Public, []byte(to), amt, []byte(payload))
+	txn := NewTransaction(kp.Public, []byte(to), amt, cid, tid, []byte(payload))
 	sig := txn.Sign(&kp)
 	txn.Signature = sig
 	return txn
@@ -171,6 +177,8 @@ type TransactionHeader struct {
 	From          []byte
 	To            []byte
 	Amount        int64
+	CompanyID     string
+	TransactionID string
 	Timestamp     uint32
 	PayloadHash   []byte
 	PayloadLength uint32
@@ -178,9 +186,9 @@ type TransactionHeader struct {
 }
 
 // Returns bytes to be sent to the network
-func NewTransaction(from []byte, to []byte, amount int64, payload []byte) Transaction {
+func NewTransaction(from []byte, to []byte, amount int64, cid string, tid string, payload []byte) Transaction {
 	t := Transaction{
-		Header:  TransactionHeader{From: from, To: to, Amount: amount},
+		Header:  TransactionHeader{From: from, To: to, Amount: amount, CompanyID: cid, TransactionID: tid},
 		Payload: payload}
 
 	payloadByte := []byte(payload)
@@ -205,6 +213,9 @@ func (th *TransactionHeader) MarshalBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	buf.Write(helpers.FitBytesInto(th.From, NetworkKeySize))
 	buf.Write(helpers.FitBytesInto(th.To, NetworkKeySize))
+	binary.Write(buf, binary.LittleEndian, th.CompanyID)
+	binary.Write(buf, binary.LittleEndian, th.TransactionID)
+	binary.Write(buf, binary.LittleEndian, th.Amount)
 	binary.Write(buf, binary.LittleEndian, th.Timestamp)
 	buf.Write(helpers.FitBytesInto(th.PayloadHash, 32))
 	binary.Write(buf, binary.LittleEndian, th.PayloadLength)
