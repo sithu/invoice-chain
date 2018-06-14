@@ -105,7 +105,7 @@ func (db *DB) runGC() {
 
 type ValueData struct {
 	CompanyID string
-	balance   int64
+	Balance   int64
 }
 
 func (db *DB) writeBlockToDB(bc *Blockchain, namespace []byte) error {
@@ -119,7 +119,7 @@ func (db *DB) writeBlockToDB(bc *Blockchain, namespace []byte) error {
 		db.Set(namespace, key, byteValue)
 	} else {
 		json.Unmarshal(value, &valueData)
-		valueData.balance = bc.balance
+		valueData.Balance = bc.balance
 		newValue, _ := json.Marshal(valueData)
 		db.Set(namespace, key, newValue)
 	}
