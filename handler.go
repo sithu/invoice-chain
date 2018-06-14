@@ -50,6 +50,7 @@ func buildResponse(h func(io.Writer, *http.Request) response) http.HandlerFunc {
 }
 
 func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
+	db, _ := makeDB()
 	if r.Method != http.MethodPost {
 		return response{
 			nil,
@@ -85,7 +86,7 @@ func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
 
 			// Forge the new Block by adding it to the chain
 			h.blockchain.AddBlock(block)
-
+			db.writeBlockToDB(h.blockchain, []byte("qbchain"))
 			resp = map[string]interface{}{"message": "New Block Forged", "block": block}
 		} else {
 			status = http.StatusBadRequest

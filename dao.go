@@ -1,7 +1,11 @@
 package qbchain
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"path"
 	"time"
 
 	badgerdb "github.com/dgraph-io/badger"
@@ -97,4 +101,41 @@ func (db *DB) runGC() {
 			goto again
 		}
 	}
+}
+
+type ValueData struct {
+	CompanyID string
+	balance   int64
+}
+
+func (db *DB) writeBlockToDB(bc *Blockchain, namespace []byte) error {
+	var valueData ValueData
+	t := (*bc.chain.LastBlock().TransactionSlice)[0]
+	key := t.Header.From
+	value, err := db.Get(namespace, key)
+	data := ValueData{t.Header.CompanyID, bc.balance}
+	byteValue, _ := json.Marshal(data)
+	if value == nil {
+		db.Set(namespace, key, byteValue)
+	} else {
+		json.Unmarshal(value, &valueData)
+		valueData.balance = bc.balance
+		newValue, _ := json.Marshal(valueData)
+		db.Set(namespace, key, newValue)
+	}
+	return err
+}
+
+func makeDB() (*DB, func()) {
+	tmpDir, _ := ioutil.TempDir("/Users/jduan1/qbchain/", "qbchain-test")
+
+	fmt.Print(tmpDir)
+
+	db, _ := New(path.Join(tmpDir, "data"), path.Join(tmpDir, "meta"))
+
+	cleanup := func() {
+		db.Close()
+		//os.RemoveAll(tmpDir)
+	}
+	return db, cleanup
 }

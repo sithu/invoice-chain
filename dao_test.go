@@ -1,6 +1,7 @@
 package qbchain
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,7 +17,12 @@ var (
 	data      = []byte("bar")
 )
 
-func makeTestDB(t *testing.T) (*DB, func()) {
+type Test123 struct {
+	Proof        int64  `json:"proof"`
+	PreviousHash string `json:"previous_hash"`
+}
+
+func makeDBTest(t *testing.T) (*DB, func()) {
 	tmpDir, _ := ioutil.TempDir("/Users/jduan1/qbchain/", "qbchain-test")
 
 	fmt.Print(tmpDir)
@@ -32,7 +38,7 @@ func makeTestDB(t *testing.T) (*DB, func()) {
 
 func TestDaoSetAndGet(t *testing.T) {
 	require := require.New(t)
-	db, cleanup := makeTestDB(t)
+	db, cleanup := makeDBTest(t)
 	defer cleanup()
 
 	err := db.Set(namespace, key, data)
@@ -40,4 +46,21 @@ func TestDaoSetAndGet(t *testing.T) {
 	storedData, err := db.Get(namespace, key)
 	require.NoError(err)
 	require.Equal(data, storedData)
+}
+
+//test value is a json struct
+func TestDaoSetAndGetforStruc(t *testing.T) {
+	require := require.New(t)
+	db, cleanup := makeDBTest(t)
+	defer cleanup()
+
+	x := Test123{1, "Hello"}
+	// reqBodyBytes := new(bytes.Buffer)
+	// json.NewEncoder(reqBodyBytes).Encode(x)
+	xByte, _ := json.Marshal(x)
+	err := db.Set(namespace, key, xByte)
+	require.NoError(err)
+	storedData, err := db.Get(namespace, key)
+	require.NoError(err)
+	require.Equal(xByte, storedData)
 }
