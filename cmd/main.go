@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.intuit.com/payments/qbchain.git"
+	".."
+	// "github.intuit.com/payments/qbchain.git"
 )
 
 func main() {

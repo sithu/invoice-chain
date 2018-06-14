@@ -7,10 +7,15 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"net/http"
 	"os"
+	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/izqui/helpers"
@@ -18,8 +23,11 @@ import (
 )
 
 const (
-	KeySize        = 28
-	NetworkKeySize = 80
+	KeySize                    = 28
+	NetworkKeySize             = 80
+	TRANSACTION_POW_COMPLEXITY = 1
+	POW_PREFIX                 = 0
+	BLOCK_POW_COMPLEXITY       = 2
 )
 
 type Keypair struct {
@@ -42,7 +50,8 @@ func main() {
 		generateKeypair()
 		os.Exit(0)
 	case "submit":
-		CreateNewTransactionFromCli()
+		txn := CreateNewTransactionFromCli()
+		httpPOST(txn)
 		os.Exit(0)
 	default:
 		flag.PrintDefaults()
@@ -50,8 +59,26 @@ func main() {
 	}
 }
 
+type User struct {
+	Id      string
+	Balance uint64
+}
+
+func httpPOST(t Transaction) {
+	// u := User{Id: "US123", Balance: 8}
+	buffer := new(bytes.Buffer)
+	json.NewEncoder(buffer).Encode(t)
+	resp, err := http.Post("http://127.0.0.1:8000/transactions/new", "application/json; charset=utf-8", buffer)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println(resp.Status, string(body))
+}
+
 // FIXME: duplicate of crypto.go
-func generateKeypair() {
+func generateKeypair() *Keypair {
 	pk, _ := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
 	b := bigJoin(KeySize, pk.PublicKey.X, pk.PublicKey.Y)
 
@@ -59,11 +86,15 @@ func generateKeypair() {
 	private := base58.EncodeBig([]byte{}, pk.D)
 
 	fmt.Printf("Public Key : %s\nPrivate Key: %s\n", public, private)
+	kp := Keypair{Public: public, Private: private}
+	return &kp
 }
 
 func (k *Keypair) Sign(hash []byte) ([]byte, error) {
+	fmt.Println("Private Key:", k.Private)
 	d, err := base58.DecodeToBig(k.Private)
 	if err != nil {
+		fmt.Printf("Error:%s", err)
 		return nil, err
 	}
 
@@ -95,29 +126,34 @@ func bigJoin(expectedLen int, bigs ...*big.Int) *big.Int {
 	return b
 }
 
-func CreateNewTransactionFromCli() {
+func CreateNewTransactionFromCli() Transaction {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter Public Key: ")
-	publicKey, _ := reader.ReadString('\n')
+	// fmt.Print("Enter Public Key: ")
+	// publicKey, _ := reader.ReadString('\n')
 
-	fmt.Print("Enter Private Key: ")
-	privateKey, _ := reader.ReadString('\n')
+	// fmt.Print("Enter Private Key: ")
+	// privateKey, _ := reader.ReadString('\n')
 
-	fmt.Print("From Address: ")
-	from, _ := reader.ReadString('\n')
+	// fmt.Print("From Address: ")
+	// from, _ := reader.ReadString('\n')
 
 	fmt.Print("To Address: ")
 	to, _ := reader.ReadString('\n')
 
+	fmt.Print("Amount: ")
+	amount, _ := reader.ReadString('\n')
+
+	amt, _ := strconv.ParseInt(amount, 10, 64)
+
 	fmt.Print("Payload : ")
 	payload, _ := reader.ReadString('\n')
 
-	txn := NewTransaction([]byte(from), []byte(to), []byte(payload))
-	kp := Keypair{Public: []byte(publicKey), Private: []byte(privateKey)}
-	signature := txn.Sign(&kp)
-	txn.Signature = signature
+	kp := generateKeypair()
 
-	fmt.Println(txn)
+	txn := NewTransaction(kp.Public, []byte(to), amt, []byte(payload))
+	sig := txn.Sign(kp)
+	txn.Signature = sig
+	return txn
 }
 
 type Transaction struct {
@@ -129,6 +165,7 @@ type Transaction struct {
 type TransactionHeader struct {
 	From          []byte
 	To            []byte
+	Amount        int64
 	Timestamp     uint32
 	PayloadHash   []byte
 	PayloadLength uint32
@@ -136,12 +173,17 @@ type TransactionHeader struct {
 }
 
 // Returns bytes to be sent to the network
-func NewTransaction(from, to, payload []byte) *Transaction {
-	t := Transaction{Header: TransactionHeader{From: from, To: to}, Payload: payload}
+func NewTransaction(from []byte, to []byte, amount int64, payload []byte) Transaction {
+	t := Transaction{
+		Header:  TransactionHeader{From: from, To: to, Amount: amount},
+		Payload: payload}
+
+	payloadByte := []byte(payload)
 	t.Header.Timestamp = uint32(time.Now().Unix())
-	t.Header.PayloadHash = helpers.SHA256(t.Payload)
-	t.Header.PayloadLength = uint32(len(t.Payload))
-	return &t
+	t.Header.PayloadHash = helpers.SHA256(payloadByte)
+	t.Header.PayloadLength = uint32(len(payloadByte))
+	t.Header.Nonce = t.GenerateNonce(TRANSACTION_POW)
+	return t
 }
 
 func (t *Transaction) Hash() []byte {
@@ -180,4 +222,32 @@ func splitBig(b *big.Int, parts int) []*big.Int {
 	}
 
 	return as
+}
+
+func (t *Transaction) GenerateNonce(prefix []byte) uint32 {
+
+	newT := t
+	for {
+
+		if CheckProofOfWork(prefix, newT.Hash()) {
+			break
+		}
+
+		newT.Header.Nonce++
+	}
+
+	return newT.Header.Nonce
+}
+
+var (
+	TRANSACTION_POW = helpers.ArrayOfBytes(TRANSACTION_POW_COMPLEXITY, POW_PREFIX)
+	BLOCK_POW       = helpers.ArrayOfBytes(BLOCK_POW_COMPLEXITY, POW_PREFIX)
+)
+
+func CheckProofOfWork(prefix []byte, hash []byte) bool {
+
+	if len(prefix) > 0 {
+		return reflect.DeepEqual(prefix, hash[:len(prefix)])
+	}
+	return true
 }

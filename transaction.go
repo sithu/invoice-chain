@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"log"
 	"reflect"
 	"time"
 
@@ -11,15 +12,15 @@ import (
 )
 
 type Transaction struct {
-	Header    TransactionHeader  
+	Header    TransactionHeader
 	Signature []byte
 	Payload   []byte
 }
 
 type TransactionHeader struct {
-	From          []byte 
-	To            []byte 
-	Amount    	  int64  
+	From          []byte
+	To            []byte
+	Amount        int64
 	Timestamp     uint32
 	PayloadHash   []byte
 	PayloadLength uint32
@@ -37,7 +38,7 @@ func (slice TransactionSlice) Len() int {
 func NewTransaction(from []byte, to []byte, amount int64, payload []byte) Transaction {
 
 	t := Transaction{
-		Header: TransactionHeader{From: from, To: to, Amount: amount},
+		Header:  TransactionHeader{From: from, To: to, Amount: amount},
 		Payload: payload}
 
 	payloadByte := []byte(payload)
@@ -61,11 +62,14 @@ func (t *Transaction) Sign(keypair *Keypair) []byte {
 }
 
 func (t *Transaction) VerifyTransaction(pow []byte) bool {
-
 	headerHash := t.Hash()
 	payloadHash := helpers.SHA256(t.Payload)
 
-	return reflect.DeepEqual(payloadHash, t.Header.PayloadHash) && CheckProofOfWork(pow, headerHash) && SignatureVerify(t.Header.From, t.Signature, headerHash)
+	payloadCheck := reflect.DeepEqual(payloadHash, t.Header.PayloadHash)
+	powCheck := CheckProofOfWork(pow, headerHash)
+	sigCheck := SignatureVerify(t.Header.From, t.Signature, headerHash)
+	log.Printf("PayloadCheck:%b, PoWCheck:%b, SigCheck:%b", payloadCheck, powCheck, sigCheck)
+	return payloadCheck && powCheck && sigCheck
 }
 
 func (t *Transaction) MarshalBinary() ([]byte, error) {
