@@ -20,6 +20,8 @@ type Transaction struct {
 type TransactionHeader struct {
 	From          []byte
 	To            []byte
+	CompanyID     string
+	TransactionID string
 	Amount        int64
 	Timestamp     uint32
 	PayloadHash   []byte
@@ -111,6 +113,9 @@ func (th *TransactionHeader) MarshalBinary() ([]byte, error) {
 
 	buf.Write(helpers.FitBytesInto(th.From, NETWORK_KEY_SIZE))
 	buf.Write(helpers.FitBytesInto(th.To, NETWORK_KEY_SIZE))
+	binary.Write(buf, binary.LittleEndian, th.CompanyID)
+	binary.Write(buf, binary.LittleEndian, th.TransactionID)
+	binary.Write(buf, binary.LittleEndian, th.Amount)
 	binary.Write(buf, binary.LittleEndian, th.Timestamp)
 	buf.Write(helpers.FitBytesInto(th.PayloadHash, 32))
 	binary.Write(buf, binary.LittleEndian, th.PayloadLength)
@@ -125,6 +130,9 @@ func (th *TransactionHeader) UnmarshalBinary(d []byte) error {
 	buf := bytes.NewBuffer(d)
 	th.From = helpers.StripByte(buf.Next(NETWORK_KEY_SIZE), 0)
 	th.To = helpers.StripByte(buf.Next(NETWORK_KEY_SIZE), 0)
+	binary.Read(bytes.NewBuffer(buf.Next(4)), binary.LittleEndian, &th.CompanyID)
+	binary.Read(bytes.NewBuffer(buf.Next(4)), binary.LittleEndian, &th.TransactionID)
+	binary.Read(bytes.NewBuffer(buf.Next(4)), binary.LittleEndian, &th.Amount)
 	binary.Read(bytes.NewBuffer(buf.Next(4)), binary.LittleEndian, &th.Timestamp)
 	th.PayloadHash = buf.Next(32)
 	binary.Read(bytes.NewBuffer(buf.Next(4)), binary.LittleEndian, &th.PayloadLength)
