@@ -16,6 +16,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/izqui/helpers"
@@ -128,30 +129,34 @@ func bigJoin(expectedLen int, bigs ...*big.Int) *big.Int {
 
 func CreateNewTransactionFromCli() Transaction {
 	reader := bufio.NewReader(os.Stdin)
-	// fmt.Print("Enter Public Key: ")
-	// publicKey, _ := reader.ReadString('\n')
+	fmt.Print("Enter Public Key: ")
+	publicKey, _ := reader.ReadString('\n')
+	publicKey = strings.TrimSpace(publicKey)
 
-	// fmt.Print("Enter Private Key: ")
-	// privateKey, _ := reader.ReadString('\n')
-
-	// fmt.Print("From Address: ")
-	// from, _ := reader.ReadString('\n')
+	fmt.Print("Enter Private Key: ")
+	privateKey, _ := reader.ReadString('\n')
+	privateKey = strings.TrimSpace(privateKey)
 
 	fmt.Print("To Address: ")
 	to, _ := reader.ReadString('\n')
+	to = strings.TrimSpace(to)
 
 	fmt.Print("Amount: ")
 	amount, _ := reader.ReadString('\n')
+	amount = strings.TrimSpace(amount)
 
-	amt, _ := strconv.ParseInt(amount, 10, 64)
+	amt, err := strconv.ParseInt(amount, 10, 64)
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+	}
 
 	fmt.Print("Payload : ")
 	payload, _ := reader.ReadString('\n')
+	payload = strings.TrimSpace(payload)
 
-	kp := generateKeypair()
-
+	kp := Keypair{Public: []byte(publicKey), Private: []byte(privateKey)}
 	txn := NewTransaction(kp.Public, []byte(to), amt, []byte(payload))
-	sig := txn.Sign(kp)
+	sig := txn.Sign(&kp)
 	txn.Signature = sig
 	return txn
 }
