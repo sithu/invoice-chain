@@ -167,21 +167,20 @@ func (db *DB) addBlock(bc *Blockchain, namespace []byte) {
 }
 
 func (db *DB) getBlocks(bc *Blockchain, pk string, namespace []byte) {
-	log.Printf("get blocks")
+	log.Printf("get blocks for: " + pk)
 	// Prefix scans
 	err := db.badger.View(func(txn *badgerdb.Txn) error {
 		it := txn.NewIterator(badgerdb.DefaultIteratorOptions)
-		prefix := []byte(pk)
+		prefix := badgerKey(namespace, []byte(pk))
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			log.Printf("found one block")
-			// TODO add block to chain
 			item := it.Item()
-			k := item.Key()
 			v, err := item.Value()
 			if err != nil {
 				return err
 			}
-			log.Printf("key=%s, value=%s\n", k, v)
+			var block Block
+			json.Unmarshal(v, &block)
+			bc.chain.AppendBlock(block)
 		}
 		return nil
 	})

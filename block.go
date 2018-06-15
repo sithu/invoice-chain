@@ -11,16 +11,16 @@ import (
 )
 
 type Block struct {
-    *BlockHeader  
-	Signature    []byte
-    *TransactionSlice
+	*BlockHeader
+	Signature []byte
+	*TransactionSlice
 }
 
 type BlockHeader struct {
-    Origin     []byte
-	PrevBlock  []byte
-	Timestamp  uint32
-	Nonce      uint32
+	Origin    []byte
+	PrevBlock []byte
+	Timestamp uint32
+	Nonce     uint32
 }
 
 type BlockSlice []Block
@@ -32,6 +32,11 @@ func (bs BlockSlice) LastBlock() *Block {
 	} else {
 		return &bs[l-1]
 	}
+}
+
+func (bs *BlockSlice) AppendBlock(b Block) {
+	*bs = append(*bs, b)
+
 }
 
 func NewBlock(previousBlock []byte) Block {
