@@ -75,6 +75,9 @@ func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
 		t.Header.PayloadHash = helpers.SHA256(t.Payload)
 		t.Header.PayloadLength = uint32(len(t.Payload))
 
+		// get blockchain based on pk
+		h.blockchain = NewBlockchain(string(t.Header.From), h.db)
+
 		if t.VerifyTransaction(TRANSACTION_POW) {
 			prevBlock := h.blockchain.LastBlock()
 			block := NewBlock(prevBlock.Hash())

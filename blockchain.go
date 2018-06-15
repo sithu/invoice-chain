@@ -58,12 +58,6 @@ func (bc *Blockchain) AddBlock(b Block, db *DB) {
 	db.writeChainInfoToDB(bc, []byte(DB_NAMESPACE))
 	db.addBlock(bc, []byte(DB_NAMESPACE))
 
-	if len(*b.TransactionSlice) > 0 {
-		t := (*b.TransactionSlice)[0]
-		value, _ := db.Get([]byte(DB_NAMESPACE), t.Header.From)
-		log.Printf("current balance:" + string(value))
-	}
-
 }
 
 func (bc *Blockchain) NewTransaction(tx Transaction) int64 {
