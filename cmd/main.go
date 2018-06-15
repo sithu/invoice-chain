@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	".."
@@ -13,12 +14,15 @@ import (
 
 func main() {
 	serverPort := flag.String("port", "8000", "http port number where server will run")
+	udpPort := flag.String("udp_port", "10001", "UDP port number where server will listen")
 	flag.Parse()
 
 	db, _ := qbchain.MakeDB()
 	blockchain := qbchain.NewBlockchain(db)
 	nodeID := strings.Replace(qbchain.PseudoUUID(), "-", "", -1)
-	log.Printf("Starting QB Chain HTTP Server. Listening at port %q", *serverPort)
+	log.Printf("Starting QB Chain HTTP API Server. Listening at port %q", *serverPort)
+	port, _ := strconv.Atoi(*udpPort)
+	go qbchain.ListenUDP(port)
 
 	http.Handle("/", qbchain.NewHandler(blockchain, nodeID, db))
 	http.ListenAndServe(fmt.Sprintf(":%s", *serverPort), nil)
