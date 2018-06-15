@@ -70,7 +70,7 @@ func (t *Transaction) VerifyTransaction(pow []byte) bool {
 	payloadCheck := reflect.DeepEqual(payloadHash, t.Header.PayloadHash)
 	powCheck := CheckProofOfWork(pow, headerHash)
 	sigCheck := SignatureVerify(t.Header.From, t.Signature, headerHash)
-	log.Printf("PayloadCheck:%b, PoWCheck:%b, SigCheck:%b", payloadCheck, powCheck, sigCheck)
+	log.Printf("PayloadCheck:%v, PoWCheck:%v, SigCheck:%v", payloadCheck, powCheck, sigCheck)
 	return payloadCheck && powCheck && sigCheck
 }
 

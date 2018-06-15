@@ -127,7 +127,7 @@ func (db *DB) writeBlockToDB(bc *Blockchain, namespace []byte) error {
 }
 
 func makeDB() (*DB, func()) {
-	tmpDir, _ := ioutil.TempDir("/Users/jduan1/qbchain/", "qbchain-test")
+	tmpDir, _ := ioutil.TempDir(".", "qbchain.db")
 
 	fmt.Print(tmpDir)
 

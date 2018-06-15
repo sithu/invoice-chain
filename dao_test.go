@@ -23,7 +23,7 @@ type Test123 struct {
 }
 
 func makeDBTest(t *testing.T) (*DB, func()) {
-	tmpDir, _ := ioutil.TempDir("/Users/jduan1/qbchain/", "qbchain-test")
+	tmpDir, _ := ioutil.TempDir(".", "db-qbchain-test")
 
 	fmt.Print(tmpDir)
 
