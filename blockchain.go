@@ -136,9 +136,7 @@ func (bc *Blockchain) ResolveConflicts() bool {
 	return false
 }
 
-func NewBlockchain(db *DB) *Blockchain {
-
-	pk := "38MuCaHrD6AeFgV54Mqc4C7E6Xqx2qQRTKWZmCFXHXgP5UTXY7rYrznZZTjoF7NV9R7oEWPSo61ck"
+func NewBlockchain(pk string, db *DB) *Blockchain {
 	value, _ := db.getChainInfo(pk, []byte(DB_NAMESPACE))
 
 	newBlockchain := &Blockchain{

@@ -11,8 +11,8 @@ import (
 	"github.com/izqui/helpers"
 )
 
-func NewHandler(blockchain *Blockchain, nodeID string, db *DB) http.Handler {
-	h := handler{blockchain, nodeID, db}
+func NewHandler(nodeID string, db *DB) http.Handler {
+	h := handler{nil, nodeID, db}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/nodes/register", buildResponse(h.RegisterNode))
@@ -142,6 +142,10 @@ func (h *handler) Blockchain(w io.Writer, r *http.Request) response {
 		}
 	}
 	log.Println("Blockchain requested")
+
+	pk := r.URL.Query().Get("pk")
+
+	h.blockchain = NewBlockchain(pk, h.db)
 
 	resp := map[string]interface{}{"chain": h.blockchain.chain, "length": len(h.blockchain.chain), "balance": h.blockchain.balance}
 	return response{resp, http.StatusOK, nil}

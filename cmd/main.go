@@ -18,12 +18,11 @@ func main() {
 	flag.Parse()
 
 	db, _ := qbchain.MakeDB()
-	blockchain := qbchain.NewBlockchain(db)
 	nodeID := strings.Replace(qbchain.PseudoUUID(), "-", "", -1)
 	log.Printf("Starting QB Chain HTTP API Server. Listening at port %q", *serverPort)
 	port, _ := strconv.Atoi(*udpPort)
 	go qbchain.ListenUDP(port)
 
-	http.Handle("/", qbchain.NewHandler(blockchain, nodeID, db))
+	http.Handle("/", qbchain.NewHandler(nodeID, db))
 	http.ListenAndServe(fmt.Sprintf(":%s", *serverPort), nil)
 }
