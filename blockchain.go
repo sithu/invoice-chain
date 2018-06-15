@@ -56,6 +56,7 @@ func (bc *Blockchain) AddBlock(b Block, db *DB) {
 
 	// save to DB
 	db.writeChainInfoToDB(bc, []byte(DB_NAMESPACE))
+	db.addBlock(bc, []byte(DB_NAMESPACE))
 
 	if len(*b.TransactionSlice) > 0 {
 		t := (*b.TransactionSlice)[0]
@@ -139,18 +140,17 @@ func NewBlockchain(db *DB) *Blockchain {
 
 	pk := "38MuCaHrD6AeFgV54Mqc4C7E6Xqx2qQRTKWZmCFXHXgP5UTXY7rYrznZZTjoF7NV9R7oEWPSo61ck"
 	value, _ := db.getChainInfo(pk, []byte(DB_NAMESPACE))
-	log.Printf("get balance:" + string(value.Balance))
 
 	newBlockchain := &Blockchain{
 		chain:   nil,
 		balance: value.Balance,
 		nodes:   NewStringSet(),
 	}
-
-	// TODO get blocks
-
 	// Initial, sentinel block if not block in DB
 	newBlockchain.AddBlock(NewBlock(make([]byte, 0)), db) // empty previous block
+
+	db.getBlocks(newBlockchain, pk+"_", []byte(DB_NAMESPACE))
+
 	return newBlockchain
 }
 

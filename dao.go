@@ -130,6 +130,7 @@ func (db *DB) writeChainInfoToDB(bc *Blockchain, namespace []byte) {
 }
 
 func (db *DB) getChainInfo(pk string, namespace []byte) (chainInfo ChainInfo, err error) {
+	log.Printf("get chain info")
 	value, err := db.Get(namespace, []byte(pk))
 	json.Unmarshal(value, &chainInfo)
 
@@ -151,13 +152,40 @@ func MakeDB() (*DB, func()) {
 	return db, cleanup
 }
 
-func (db *DB) addBlock(bc *Blockchain, namespace []byte) error {
+func (db *DB) addBlock(bc *Blockchain, namespace []byte) {
 	Block := *bc.chain.LastBlock()
-	t := (*bc.chain.LastBlock().TransactionSlice)[0]
-	pk := t.Header.From
-	txnID := t.Header.TransactionID
-	key := fmt.Sprintf(string(pk) + "_" + txnID)
-	blockByte, err := json.Marshal(Block)
-	db.Set(namespace, []byte(key), blockByte)
-	return err
+	// write block to db if not the first dummy block
+	if len(*bc.chain.LastBlock().TransactionSlice) > 0 {
+		t := (*bc.chain.LastBlock().TransactionSlice)[0]
+		pk := t.Header.From
+		txnID := t.Header.TransactionID
+		key := fmt.Sprintf(string(pk) + "_" + txnID)
+		blockByte, _ := json.Marshal(Block)
+		db.Set(namespace, []byte(key), blockByte)
+		log.Printf("new block added")
+	}
+}
+
+func (db *DB) getBlocks(bc *Blockchain, pk string, namespace []byte) {
+	log.Printf("get blocks")
+	// Prefix scans
+	err := db.badger.View(func(txn *badgerdb.Txn) error {
+		it := txn.NewIterator(badgerdb.DefaultIteratorOptions)
+		prefix := []byte(pk)
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			log.Printf("found one block")
+			// TODO add block to chain
+			item := it.Item()
+			k := item.Key()
+			v, err := item.Value()
+			if err != nil {
+				return err
+			}
+			log.Printf("key=%s, value=%s\n", k, v)
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
 }
