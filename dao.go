@@ -139,3 +139,14 @@ func makeDB() (*DB, func()) {
 	}
 	return db, cleanup
 }
+
+func (db *DB) addBlock(bc *Blockchain, namespace []byte) error {
+	Block := *bc.chain.LastBlock()
+	t := (*bc.chain.LastBlock().TransactionSlice)[0]
+	pk := t.Header.From
+	txnID := t.Header.TransactionID
+	key := fmt.Sprintf(string(pk) + "_" + txnID)
+	blockByte, err := json.Marshal(Block)
+	db.Set(namespace, []byte(key), blockByte)
+	return err
+}

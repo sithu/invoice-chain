@@ -87,6 +87,7 @@ func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
 			// Forge the new Block by adding it to the chain
 			h.blockchain.AddBlock(block)
 			db.writeBlockToDB(h.blockchain, []byte("qbchain"))
+			db.addBlock(h.blockchain, []byte("qbchain"))
 			resp = map[string]interface{}{"message": "New Block Forged", "block": block}
 		} else {
 			status = http.StatusBadRequest
