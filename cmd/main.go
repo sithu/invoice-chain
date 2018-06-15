@@ -15,11 +15,11 @@ func main() {
 	serverPort := flag.String("port", "8000", "http port number where server will run")
 	flag.Parse()
 
-	blockchain := qbchain.NewBlockchain()
+	db, _ := qbchain.MakeDB()
+	blockchain := qbchain.NewBlockchain(db)
 	nodeID := strings.Replace(qbchain.PseudoUUID(), "-", "", -1)
-
 	log.Printf("Starting QB Chain HTTP Server. Listening at port %q", *serverPort)
 
-	http.Handle("/", qbchain.NewHandler(blockchain, nodeID))
+	http.Handle("/", qbchain.NewHandler(blockchain, nodeID, db))
 	http.ListenAndServe(fmt.Sprintf(":%s", *serverPort), nil)
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/izqui/helpers"
 )
 
-func NewHandler(blockchain *Blockchain, nodeID string) http.Handler {
-	h := handler{blockchain, nodeID}
+func NewHandler(blockchain *Blockchain, nodeID string, db *DB) http.Handler {
+	h := handler{blockchain, nodeID, db}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/nodes/register", buildResponse(h.RegisterNode))
@@ -25,7 +25,8 @@ func NewHandler(blockchain *Blockchain, nodeID string) http.Handler {
 
 type handler struct {
 	blockchain *Blockchain
-	nodeId     string
+	nodeID     string
+	db         *DB
 }
 
 type response struct {
@@ -50,7 +51,6 @@ func buildResponse(h func(io.Writer, *http.Request) response) http.HandlerFunc {
 }
 
 func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
-	db, _ := makeDB()
 	if r.Method != http.MethodPost {
 		return response{
 			nil,
@@ -85,9 +85,8 @@ func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
 			block.BlockHeader.Timestamp = t.Header.Timestamp
 
 			// Forge the new Block by adding it to the chain
-			h.blockchain.AddBlock(block)
-			db.writeBlockToDB(h.blockchain, []byte("qbchain"))
-			db.addBlock(h.blockchain, []byte("qbchain"))
+			h.blockchain.AddBlock(block, h.db)
+
 			resp = map[string]interface{}{"message": "New Block Forged", "block": block}
 		} else {
 			status = http.StatusBadRequest
@@ -118,7 +117,7 @@ func (h *handler) Mine(w io.Writer, r *http.Request) response {
 
 	// We must receive a reward for finding the proof.
 	// The sender is "0" to signify that this node has mined a new coin.
-	newTx := NewTransaction(make([]byte, 0), []byte(h.nodeId), 1, []byte("Mine"))
+	newTx := NewTransaction(make([]byte, 0), []byte(h.nodeID), 1, []byte("Mine"))
 	prevBlock := h.blockchain.LastBlock()
 	block := NewBlock(prevBlock.Hash())
 	block.AddTransaction(&newTx)
@@ -128,7 +127,7 @@ func (h *handler) Mine(w io.Writer, r *http.Request) response {
 	block.BlockHeader.Timestamp = newTx.Header.Timestamp
 
 	// Forge the new Block by adding it to the chain
-	h.blockchain.AddBlock(block)
+	h.blockchain.AddBlock(block, h.db)
 
 	resp := map[string]interface{}{"message": "New Block Forged", "block": block}
 	return response{resp, http.StatusOK, nil}

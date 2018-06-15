@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"log"
 	"path"
 	"time"
 
@@ -52,24 +52,22 @@ func (db *DB) Set(namespace, key, metadata []byte) error {
 }
 
 // Get implements db.Get
-func (db *DB) Get(namespace, key []byte) (metadata []byte, err error) {
+func (db *DB) Get(namespace, key []byte) (value []byte, err error) {
 	err = db.badger.View(func(txn *badgerdb.Txn) error {
 		item, err := txn.Get(badgerKey(namespace, key))
 		if err != nil {
 			return err
 		}
-		value, err := item.Value()
+		value, err = item.Value()
 		if err != nil {
 			return err
 		}
-		metadata = make([]byte, len(value))
-		copy(metadata, value)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return metadata, nil
+	return value, nil
 }
 
 func badgerPrefix(namespace []byte) []byte {
@@ -103,35 +101,48 @@ func (db *DB) runGC() {
 	}
 }
 
-type ValueData struct {
+type ChainInfo struct {
 	CompanyID string
 	Balance   int64
 }
 
-func (db *DB) writeBlockToDB(bc *Blockchain, namespace []byte) error {
-	var valueData ValueData
-	t := (*bc.chain.LastBlock().TransactionSlice)[0]
-	key := t.Header.From
-	value, err := db.Get(namespace, key)
-	data := ValueData{t.Header.CompanyID, bc.balance}
-	byteValue, _ := json.Marshal(data)
-	if value == nil {
-		db.Set(namespace, key, byteValue)
-	} else {
-		json.Unmarshal(value, &valueData)
-		valueData.Balance = bc.balance
-		newValue, _ := json.Marshal(valueData)
-		db.Set(namespace, key, newValue)
+func (db *DB) writeChainInfoToDB(bc *Blockchain, namespace []byte) {
+	var chainInfo ChainInfo
+
+	// write block to db if not the first dummy block
+	if len((*bc.chain.LastBlock().TransactionSlice)) > 0 {
+		t := (*bc.chain.LastBlock().TransactionSlice)[0]
+		key := t.Header.From
+		value, _ := db.Get(namespace, key)
+		data := ChainInfo{t.Header.CompanyID, bc.balance}
+		byteValue, _ := json.Marshal(data)
+		if value == nil {
+			log.Printf("create new chain info")
+			db.Set(namespace, key, byteValue)
+		} else {
+			json.Unmarshal(value, &chainInfo)
+			chainInfo.Balance = bc.balance
+			newValue, _ := json.Marshal(chainInfo)
+			log.Printf("update chain info")
+			db.Set(namespace, key, newValue)
+		}
 	}
-	return err
 }
 
-func makeDB() (*DB, func()) {
-	tmpDir, _ := ioutil.TempDir(".", "qbchain.db")
+func (db *DB) getChainInfo(pk string, namespace []byte) (chainInfo ChainInfo, err error) {
+	value, err := db.Get(namespace, []byte(pk))
+	json.Unmarshal(value, &chainInfo)
 
-	fmt.Print(tmpDir)
+	return chainInfo, err
+}
 
-	db, _ := New(path.Join(tmpDir, "data"), path.Join(tmpDir, "meta"))
+func MakeDB() (*DB, func()) {
+	// dbDir, _ := ioutil.TempDir(".", "qbchain.db")
+
+	dbDir := "./qbchain.db"
+	log.Printf(dbDir)
+
+	db, _ := New(path.Join(dbDir, "data"), path.Join(dbDir, "meta"))
 
 	cleanup := func() {
 		db.Close()
