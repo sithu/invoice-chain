@@ -160,8 +160,9 @@ func (db *DB) addBlock(bc *Blockchain, namespace []byte) {
 	if len(*bc.chain.LastBlock().TransactionSlice) > 0 {
 		t := (*bc.chain.LastBlock().TransactionSlice)[0]
 		pk := t.Header.From
-		txnID := t.Header.TransactionID
-		key := fmt.Sprintf(string(pk) + "_" + txnID)
+		timestamp := t.Header.Timestamp
+		// Use timestamp instead of txnId to retrieve in the correct order
+		key := string(pk) + "_" + fmt.Sprint(timestamp)
 		blockByte, _ := json.Marshal(Block)
 		db.Set(namespace, []byte(key), blockByte)
 		log.Printf("new block added")
