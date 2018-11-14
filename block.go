@@ -14,6 +14,7 @@ type Block struct {
 	*BlockHeader
 	Signature []byte
 	*TransactionSlice
+	BlockHash []byte
 }
 
 type BlockHeader struct {
@@ -40,9 +41,8 @@ func (bs *BlockSlice) AppendBlock(b Block) {
 }
 
 func NewBlock(previousBlock []byte) Block {
-
 	header := &BlockHeader{PrevBlock: previousBlock}
-	return Block{header, nil, new(TransactionSlice)}
+	return Block{header, nil, new(TransactionSlice), nil}
 }
 
 func (b *Block) AddTransaction(t *Transaction) {

@@ -104,6 +104,7 @@ func (db *DB) runGC() {
 type ChainInfo struct {
 	CompanyID string
 	Balance   int64
+	Latest    []byte
 }
 
 func (db *DB) writeChainInfoToDB(bc *Blockchain, namespace []byte) {
@@ -114,7 +115,7 @@ func (db *DB) writeChainInfoToDB(bc *Blockchain, namespace []byte) {
 		t := (*bc.chain.LastBlock().TransactionSlice)[0]
 		key := t.Header.From
 		value, _ := db.Get(namespace, key)
-		data := ChainInfo{t.Header.CompanyID, bc.balance}
+		data := ChainInfo{t.Header.CompanyID, bc.balance, bc.latest}
 		byteValue, _ := json.Marshal(data)
 		if value == nil {
 			log.Printf("create new chain info")
@@ -122,6 +123,7 @@ func (db *DB) writeChainInfoToDB(bc *Blockchain, namespace []byte) {
 		} else {
 			json.Unmarshal(value, &chainInfo)
 			chainInfo.Balance = bc.balance
+			chainInfo.Latest = bc.latest
 			newValue, _ := json.Marshal(chainInfo)
 			log.Printf("update chain info")
 			db.Set(namespace, key, newValue)
@@ -130,7 +132,7 @@ func (db *DB) writeChainInfoToDB(bc *Blockchain, namespace []byte) {
 }
 
 func (db *DB) getChainInfo(pk string, namespace []byte) (chainInfo ChainInfo, err error) {
-	log.Printf("get chain info")
+	log.Printf("get chain info for:" + pk)
 	value, err := db.Get(namespace, []byte(pk))
 	json.Unmarshal(value, &chainInfo)
 

@@ -43,6 +43,7 @@ type BlockchainService interface {
 type Blockchain struct {
 	chain   BlockSlice
 	balance int64
+	latest  []byte
 	nodes   StringSet
 }
 
@@ -53,7 +54,7 @@ func (bc *Blockchain) AddBlock(b Block, db *DB) {
 	for _, tx := range *b.TransactionSlice {
 		bc.balance += tx.Header.Amount
 	}
-
+	bc.latest = b.BlockHash
 	// save to DB
 	db.writeChainInfoToDB(bc, []byte(DB_NAMESPACE))
 	db.addBlock(bc, []byte(DB_NAMESPACE))
@@ -134,13 +135,11 @@ func NewBlockchain(pk string, db *DB) *Blockchain {
 	value, _ := db.getChainInfo(pk, []byte(DB_NAMESPACE))
 
 	newBlockchain := &Blockchain{
-		chain:   nil,
+		chain:   make([]Block, 0),
 		balance: value.Balance,
+		latest:  value.Latest,
 		nodes:   NewStringSet(),
 	}
-	// Initial, sentinel block if not block in DB
-	newBlockchain.AddBlock(NewBlock(make([]byte, 0)), db) // empty previous block
-
 	db.getBlocks(newBlockchain, pk+"_", []byte(DB_NAMESPACE))
 
 	return newBlockchain

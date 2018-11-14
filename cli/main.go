@@ -137,7 +137,7 @@ func CreateNewTransactionFromCli() Transaction {
 	privateKey, _ := reader.ReadString('\n')
 	privateKey = strings.TrimSpace(privateKey)
 
-	fmt.Print("To Address: ")
+	fmt.Print("To Public Key: ")
 	to, _ := reader.ReadString('\n')
 	to = strings.TrimSpace(to)
 
@@ -152,9 +152,11 @@ func CreateNewTransactionFromCli() Transaction {
 
 	fmt.Print("Company ID: ")
 	cid, _ := reader.ReadString('\n')
+	cid = strings.TrimSpace(cid)
 
 	fmt.Print("Transaction ID: ")
 	tid, _ := reader.ReadString('\n')
+	tid = strings.TrimSpace(tid)
 
 	fmt.Print("Payload : ")
 	payload, _ := reader.ReadString('\n')

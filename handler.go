@@ -79,18 +79,36 @@ func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
 		h.blockchain = NewBlockchain(string(t.Header.From), h.db)
 
 		if t.VerifyTransaction(TRANSACTION_POW) {
-			prevBlock := h.blockchain.LastBlock()
-			block := NewBlock(prevBlock.Hash())
+			block := NewBlock(h.blockchain.latest)
 			block.AddTransaction(&t)
 			// Hack here, in fact miner should sign the block and add it to chain
 			block.BlockHeader.Nonce = t.Header.Nonce
 			block.Signature = t.Signature
 			block.BlockHeader.Timestamp = t.Header.Timestamp
+			block.BlockHash = block.Hash()
 
 			// Forge the new Block by adding it to the chain
 			h.blockchain.AddBlock(block, h.db)
 
-			resp = map[string]interface{}{"message": "New Block Forged", "block": block}
+			// receiver txn
+			rTxn := t
+			rTxn.Header.To = t.Header.From
+			rTxn.Header.From = t.Header.To
+			rTxn.Header.Amount = -t.Header.Amount
+			// Write the transacton to the receiver's chain without verification
+			rBlockchain := NewBlockchain(string(rTxn.Header.From), h.db)
+			rblock := NewBlock(rBlockchain.latest)
+			rblock.AddTransaction(&rTxn)
+			rblock.BlockHeader.Nonce = rTxn.Header.Nonce
+			rblock.Signature = rTxn.Signature
+			rblock.BlockHeader.Timestamp = rTxn.Header.Timestamp
+			rblock.BlockHeader.Origin = block.BlockHash
+			rblock.BlockHash = rblock.Hash()
+
+			// Forge the new Block by adding it to the receiver's chain
+			rBlockchain.AddBlock(rblock, h.db)
+
+			resp = map[string]interface{}{"message": "New Block Forged", "block": block, "reveiverBlock": rblock}
 		} else {
 			status = http.StatusBadRequest
 			log.Printf("Invalid transaction")
