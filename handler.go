@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/izqui/helpers"
+	"github.com/spf13/viper"
 )
 
 func NewHandler(nodeID string, db *DB) http.Handler {
@@ -108,6 +109,8 @@ func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
 			// Forge the new Block by adding it to the receiver's chain
 			rBlockchain.AddBlock(rblock, h.db)
 
+			// forward the new block to other nodes
+			sendToPeers(rblock)
 			resp = map[string]interface{}{"message": "New Block Forged", "block": block, "reveiverBlock": rblock}
 		} else {
 			status = http.StatusBadRequest
@@ -118,6 +121,20 @@ func (h *handler) AddTransaction(w io.Writer, r *http.Request) response {
 	}
 
 	return response{resp, status, err}
+}
+
+func sendToPeers(b Block) {
+	peers := viper.GetStringSlice("peer_udp_ports")
+	for _, peer := range peers {
+		fmt.Println(peer)
+		// forward the new block to other nodes
+		payload, err := b.MarshalBinary()
+		if err != nil {
+			fmt.Println("Failed to marshal the block to binary")
+		} else {
+			SendUDP(payload, peer)
+		}
+	}
 }
 
 func (h *handler) Mine(w io.Writer, r *http.Request) response {

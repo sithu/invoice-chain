@@ -1,0 +1,4 @@
+api_port = 8000
+udp_port = 9000
+
+peer_udp_ports = [ "localhost:9001", "localhost:9002" ]
