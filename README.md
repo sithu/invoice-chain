@@ -1,14 +1,14 @@
-# qb-chain
+# invoice-chain
 
 ### Build
 
-#### QB Chain Server
+#### Invoice Chain Ledger Server
 
 ```sh
 cd cmd
 go get github.com/dgraph-io/badger
 go get github.com/spf13/viper
-go get github.intuit.com/payments/qbchain.git
+go get github.com/sithu/invoice-chain.git
 go build -o qbchain
 ```
 
